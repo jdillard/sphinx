@@ -211,13 +211,7 @@ def test_inheritance_diagram_png_html(tmp_path, app):
                 assert (app.outdir / reluri).exists()
 
 
-@pytest.mark.sphinx(
-    'html',
-    testroot='ext-inheritance_diagram',
-    confoverrides={'graphviz_output_format': 'svg'},
-)
-@pytest.mark.usefixtures('if_graphviz_found')
-def test_inheritance_diagram_svg_html(tmp_path, app):
+def _setup_external_inventory(tmp_path: Path, app: SphinxTestApp) -> None:
     inv_file = tmp_path / 'inventory'
     inv_file.write_bytes(external_inventory)
     app.config.intersphinx_mapping = {
@@ -227,11 +221,87 @@ def test_inheritance_diagram_svg_html(tmp_path, app):
     validate_intersphinx_mapping(app, app.config)
     load_mappings(app)
 
+
+def _resolve_svg_href(svg_path: Path, href: str, out_suffix: str) -> Path:
+    """Resolve *href* (as found in *svg_path*) to the output file it targets.
+
+    Handles both a builder that stores one file per document (``html``) and
+    one that stores each document as ``index.html`` in its own directory
+    (``dirhtml``).
+    """
+    target = (svg_path.parent / href).resolve()
+    if target.is_dir():
+        target /= f'index{out_suffix}'
+    return target
+
+
+def _assert_svg_inheritance_diagram_links(app: SphinxTestApp) -> None:
+    """Check that SVG inheritance diagrams built by *app* have working links.
+
+    Exercises same-page anchors, nested/cross-page links, and external
+    (intersphinx) links -- see
+    https://github.com/sphinx-doc/sphinx/issues/13460
+    """
+    out_suffix = app.builder.out_suffix
+
+    index_path = Path(app.builder.get_outfilename('index'))
+    index_content = index_path.read_text(encoding='utf8')
+    index_svgs = [
+        (index_path.parent / m).resolve()
+        for m in re.findall(r'<object data="([^"]+\.svg)"', index_content)
+    ]
+    assert index_svgs, 'no SVG inheritance diagrams were generated on the index page'
+
+    same_page_href = cross_page_href = external_href = None
+    for svg_path in index_svgs:
+        content = svg_path.read_text(encoding='utf8')
+        if match := re.search(r'href="([^"]*)#test\.DocHere"', content):
+            # test.DocHere is documented on index.rst itself: same-page anchor.
+            same_page_href = (svg_path, match.group(1))
+        if match := re.search(r'href="([^"]*)#test\.DocSubDir1"', content):
+            # test.DocSubDir1 is documented in subdir/page1.rst: nested/cross-page.
+            cross_page_href = (svg_path, match.group(1))
+        if match := re.search(r'href="(https://example\.org/[^"]*)"', content):
+            # external.other.Bob resolves via the external (intersphinx) inventory.
+            external_href = match.group(1)
+
+    assert same_page_href, 'no same-page inheritance-diagram link found'
+    assert cross_page_href, 'no nested/cross-page inheritance-diagram link found'
+    assert external_href, 'no external (intersphinx) inheritance-diagram link found'
+
+    svg_path, href = same_page_href
+    assert _resolve_svg_href(svg_path, href, out_suffix) == index_path.resolve()
+
+    svg_path, href = cross_page_href
+    expected = Path(app.builder.get_outfilename('subdir/page1')).resolve()
+    assert _resolve_svg_href(svg_path, href, out_suffix) == expected
+
+    # Absolute URLs must not be relativized (e.g. prefixed with ../).
+    assert external_href.startswith('https://example.org/')
+
+    # Every relative link in every generated SVG must resolve to a real file.
+    for svg_path in (app.outdir / app.builder.imagedir).glob('*.svg'):
+        content = svg_path.read_text(encoding='utf8')
+        for href in re.findall('href="(\\S+?)"', content):
+            if '://' in href:
+                assert href.startswith('https://example.org/')
+            else:
+                reluri = href.rsplit('#', 1)[0]
+                target = _resolve_svg_href(svg_path, reluri, out_suffix)
+                assert target.is_file(), f'broken link {href!r} in {svg_path.name}'
+
+
+@pytest.mark.sphinx(
+    'html',
+    testroot='ext-inheritance_diagram',
+    confoverrides={'graphviz_output_format': 'svg'},
+)
+@pytest.mark.usefixtures('if_graphviz_found')
+def test_inheritance_diagram_svg_html(tmp_path, app):
+    _setup_external_inventory(tmp_path, app)
     app.build(force_all=True)
 
     content = (app.outdir / 'index.html').read_text(encoding='utf8')
-    base_svgs = re.findall('<object data="(_images/inheritance-\\w+.svg?)"', content)
-
     pattern = (
         '<figure class="align-default" id="id1">\n'
         '<div class="graphviz">'
@@ -242,32 +312,25 @@ def test_inheritance_diagram_svg_html(tmp_path, app):
         'Test Foo!</span><a class="headerlink" href="#id1" '
         'title="Link to this image">\xb6</a></p>\n</figcaption>\n</figure>\n'
     )
-
     assert re.search(pattern, content, re.MULTILINE)
 
-    subdir_content = (app.outdir / 'subdir/page1.html').read_text(encoding='utf8')
-    subdir_svgs = re.findall(
-        '<object data="../(_images/inheritance-\\w+.svg?)"', subdir_content
-    )
+    _assert_svg_inheritance_diagram_links(app)
 
-    # Go through every SVG inheritance diagram
-    for diagram in base_svgs + subdir_svgs:
-        diagram_content = (app.outdir / diagram).read_text(encoding='utf8')
 
-        # Verify that an intersphinx link was created via the external inventory
-        if 'subdir.' in diagram_content:
-            assert 'https://example.org' in diagram_content
+@pytest.mark.sphinx(
+    'dirhtml',
+    testroot='ext-inheritance_diagram',
+    confoverrides={'graphviz_output_format': 'svg'},
+)
+@pytest.mark.usefixtures('if_graphviz_found')
+def test_inheritance_diagram_svg_dirhtml(tmp_path, app):
+    # Regression test for https://github.com/sphinx-doc/sphinx/issues/13460:
+    # SVG inheritance-diagram links were broken under the dirhtml builder,
+    # which does not store one output file per document.
+    _setup_external_inventory(tmp_path, app)
+    app.build(force_all=True)
 
-        # Extract every link in the inheritance diagram
-        for href in re.findall('href="(\\S+?)"', diagram_content):
-            if '://' in href:
-                # Verify that absolute URLs are not prefixed with ../
-                assert href.startswith('https://example.org/')
-            else:
-                # Verify that relative URLs point to existing documents
-                reluri = href.rsplit('#', 1)[0]  # strip the anchor at the end
-                abs_uri = (app.outdir / app.builder.imagedir / reluri).resolve()
-                assert abs_uri.exists()
+    _assert_svg_inheritance_diagram_links(app)
 
 
 @pytest.mark.sphinx('latex', testroot='ext-inheritance_diagram')
