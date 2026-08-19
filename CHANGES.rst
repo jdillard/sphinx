@@ -1,6 +1,14 @@
 Release 9.1.1 (in development)
 ==============================
 
+Features added
+--------------
+
+* #8287: Add a ``:level-up:`` option to the :rst:dir:`toctree` directive
+  and a :rst:dir:`toc-level-up` directive to control where toctree entries
+  attach in the TOC hierarchy.
+  Patch by Jared Dillard
+
 Bugs fixed
 ----------
 

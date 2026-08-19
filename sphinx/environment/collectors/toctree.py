@@ -69,9 +69,11 @@ class TocTreeCollector(EnvironmentCollector):
         def build_toc(
             node: Element | Sequence[Element],
             depth: int = 1,
-        ) -> nodes.bullet_list | None:
-            # list of table of contents entries
+        ) -> tuple[nodes.bullet_list | None, list[tuple[int, Element]]]:
+            # list of table of contents entries, plus toctrees waiting to be
+            # attached ``remaining`` section levels higher than the current node
             entries: list[Element] = []
+            pending: list[tuple[int, Element]] = []
             for sectionnode in node:
                 # find all toctree nodes in this section and add them
                 # to the toc (just copying the toctree node which is then
@@ -96,18 +98,31 @@ class TocTreeCollector(EnvironmentCollector):
                     )
                     para = addnodes.compact_paragraph('', '', reference)
                     item: Element = nodes.list_item('', para)
-                    sub_item = build_toc(sectionnode, depth + 1)
+                    sub_item, child_pending = build_toc(sectionnode, depth + 1)
                     if sub_item:
                         item += sub_item
                     entries.append(item)
+                    for remaining, toc_item in child_pending:
+                        if remaining == 1:
+                            entries.append(toc_item)
+                        else:
+                            pending.append((remaining - 1, toc_item))
                 # Wrap items under an ``.. only::`` directive in a node for
                 # post-processing
                 elif isinstance(sectionnode, addnodes.only):
                     onlynode = addnodes.only(expr=sectionnode['expr'])
-                    blist = build_toc(sectionnode, depth)
+                    blist, child_pending = build_toc(sectionnode, depth)
                     if blist:
                         onlynode += blist.children
                         entries.append(onlynode)
+                    # ``only`` is not a section level; keep builder filtering
+                    # on promoted toctrees without decrementing ``remaining``.
+                    for remaining, toc_item in child_pending:
+                        wrapped = addnodes.only(expr=sectionnode['expr'])
+                        wrapped.source = sectionnode.source
+                        wrapped.line = sectionnode.line
+                        wrapped.append(toc_item)
+                        pending.append((remaining, wrapped))
                 # check within the section for other node types
                 elif isinstance(sectionnode, nodes.Element):
                     # cache of parent node -> list item
@@ -118,9 +133,12 @@ class TocTreeCollector(EnvironmentCollector):
                             continue
                         if isinstance(toctreenode, addnodes.toctree):
                             item = toctreenode.copy()
-                            entries.append(item)
-                            # important: do the inventory stuff
                             note_toctree(app.env, docname, toctreenode)
+                            level_up = toctreenode.get('level-up', 0)
+                            if level_up:
+                                pending.append((level_up, item))
+                            else:
+                                entries.append(item)
                         # add object signatures within a section to the ToC
                         elif isinstance(toctreenode, addnodes.desc):
                             # The desc has one or more nested desc_signature,
@@ -181,12 +199,25 @@ class TocTreeCollector(EnvironmentCollector):
                                 memo_parents[toctreenode] = entry
 
             if entries:
-                return nodes.bullet_list('', *entries)
-            return None
+                return nodes.bullet_list('', *entries), pending
+            return None, pending
 
-        toc = build_toc(doctree)
-        if toc:
-            app.env.tocs[docname] = toc
+        toc, pending = build_toc(doctree)
+        entries = list(toc.children) if toc else []
+        for remaining, toc_item in pending:
+            if remaining > 0:
+                logger.warning(
+                    __(
+                        'toctree :level-up: %s exceeds the number of containing sections'
+                    ),
+                    _toctree_level_up(toc_item),
+                    location=toc_item,
+                    type='toc',
+                    subtype='level_up',
+                )
+            entries.append(toc_item)
+        if entries:
+            app.env.tocs[docname] = nodes.bullet_list('', *entries)
         else:
             app.env.tocs[docname] = nodes.bullet_list('')
         app.env.toc_num_entries[docname] = numentries[0]
@@ -376,6 +407,15 @@ class TocTreeCollector(EnvironmentCollector):
                     rewrite_needed.append(docname)
 
         return rewrite_needed
+
+
+def _toctree_level_up(node: Element) -> int:
+    """Return the ``level-up`` value from *node* or a nested toctree."""
+    if isinstance(node, addnodes.toctree):
+        return node.get('level-up', 0)
+    for toctreenode in node.findall(addnodes.toctree):
+        return toctreenode.get('level-up', 0)
+    return 0
 
 
 def _make_anchor_name(ids: list[str], num_entries: list[int]) -> str:

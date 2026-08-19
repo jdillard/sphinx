@@ -988,6 +988,7 @@ class _CurrentDocument:
         'highlight_language',
         'obj_desc_name',
         'reading_started_at',
+        'toc_level_up',
     )
 
     # Map of old-style temp_data keys to _CurrentDocument attributes
@@ -1009,6 +1010,7 @@ class _CurrentDocument:
         'highlight_language': 'highlight_language',
         'object': 'obj_desc_name',
         'started_at': 'reading_started_at',
+        'toc_level_up': 'toc_level_up',
     }
 
     # Attributes that should reset to None if popped.
@@ -1046,6 +1048,10 @@ class _CurrentDocument:
         #: Set by the ``.. highlight::`` directive to override
         #: the ``highlight_language`` config value.
         self.highlight_language: str = ''
+
+        #: Default number of section levels to promote subsequent ``toctree``
+        #: directives. Set by the ``.. toc-level-up::`` directive.
+        self.toc_level_up: int = 0
 
         #: The current object's name.
         #: Used in the Changes builder.
