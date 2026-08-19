@@ -1408,6 +1408,26 @@ def test_toctree_maxdepth_manual(app: SphinxTestApp) -> None:
     assert '\\chapter{Foo}' in result
 
 
+@pytest.mark.sphinx('latex', testroot='toctree-level-up')
+def test_toctree_level_up_section_nesting(app: SphinxTestApp) -> None:
+    app.build(force_all=True)
+    result = (app.outdir / 'projectnamenotset.tex').read_text(encoding='utf8')
+    intro = result.index('\\chapter{Intro header}')
+    page1 = result.index('\\chapter{Page 1}')
+    later = result.index('\\chapter{Later sibling}')
+    page2 = result.index('\\chapter{Page 2}')
+    assert intro < page1 < later < page2
+    assert '\\section{Page 1}' not in result
+    assert '\\section{Page 2}' not in result
+    assert '\\section{Hidden page}' not in result
+    assert '\\chapter{Hidden page}' in result
+    # Content after the toctree stays in the original section.
+    assert result.index('Paragraph after toctree') < page1
+    # toc-level-up default promotes default.rst; :level-up: 0 keeps override nested.
+    assert '\\section{Default page}' in result
+    assert '\\subsubsection{Override page}' in result
+
+
 @pytest.mark.sphinx(
     'latex',
     testroot='toctree-maxdepth',

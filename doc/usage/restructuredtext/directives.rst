@@ -246,6 +246,67 @@ The ``toctree`` directive is the central element.
 
       .. versionadded:: 1.2
 
+   .. rst:directive:option:: level-up: N
+      :type: non-negative integer
+
+      Attach the toctree entries *N* section levels higher than the section
+      that contains the directive.
+
+      By default, pages listed in a toctree become children of the current
+      section. With ``:level-up: 1``, they become siblings of that section
+      instead::
+
+         My title
+         ========
+
+         My header
+         ---------
+
+         .. toctree::
+            :level-up: 1
+
+            page1
+
+      This produces a TOC hierarchy of::
+
+         My title
+         ├── My header
+         └── page1
+
+      rather than nesting ``page1`` under ``My header``.
+
+      The resulting TOC hierarchy is the same for HTML, single-file HTML,
+      and LaTeX/PDF.
+
+      ``:level-up: 0`` keeps the default nesting, which is useful to override
+      :rst:dir:`toc-level-up`. Requesting more levels than there are ancestor
+      sections emits a warning and promotes as far as possible.
+
+      .. versionadded:: 9.1
+
+
+.. rst:directive:: .. toc-level-up:: N
+
+   Set the default :rst:dir:`toctree:level-up` for subsequent ``toctree``
+   directives in the same document, similar to :rst:dir:`highlight`.
+   An explicit ``:level-up:`` on a toctree overrides this default.
+
+   The level is measured from the section containing each toctree, not from
+   the section containing ``toc-level-up``.
+
+   For example::
+
+      .. toc-level-up:: 1
+
+      My header
+      ---------
+
+      .. toctree::
+
+         page1
+
+   .. versionadded:: 9.1
+
 
 Special names
 ^^^^^^^^^^^^^
