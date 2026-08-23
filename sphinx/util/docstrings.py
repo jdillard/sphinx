@@ -12,7 +12,10 @@ field_list_item_re = re.compile(Body.patterns['field_marker'])
 
 def separate_metadata(s: str | None) -> tuple[str | None, dict[str, str]]:
     """Separate docstring into metadata and others."""
-    in_other_element = False
+    # Whether the field list has been terminated by a plain paragraph line,
+    # in which case any later field-marker-like line is no longer a field
+    # (it stays part of that paragraph until the next blank line resets this).
+    broken = False
     metadata: dict[str, str] = {}
     lines = []
 
@@ -21,11 +24,11 @@ def separate_metadata(s: str | None) -> tuple[str | None, dict[str, str]]:
 
     for line in prepare_docstring(s):
         if not line.strip():
-            in_other_element = False
+            broken = False
             lines.append(line)
         else:
             matched = field_list_item_re.match(line)
-            if matched and not in_other_element:
+            if matched and not broken:
                 field_name = matched.group()[1:].partition(':')[0]
                 if field_name.startswith('meta '):
                     name = field_name[5:].strip()
@@ -33,7 +36,12 @@ def separate_metadata(s: str | None) -> tuple[str | None, dict[str, str]]:
                 else:
                     lines.append(line)
             else:
-                in_other_element = True
+                # An indented line is the continuation of the previous
+                # field's body (e.g. a wrapped paragraph or a list) and
+                # does not itself terminate the field list, so only an
+                # unindented, non-field-marker line breaks it.
+                if not matched and not line[:1].isspace():
+                    broken = True
                 lines.append(line)
 
     return '\n'.join(lines), metadata

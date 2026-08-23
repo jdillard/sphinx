@@ -37,6 +37,16 @@ def test_private_field() -> None:
     ]
 
 
+def test_private_field_after_indented_field() -> None:
+    # regression test for #11728: a `:meta private:` field must still be
+    # honored even if it follows a field whose body contains indented
+    # content (e.g. a bulleted list under `:raises:`).
+    config = _AutodocConfig(autoclass_content='class')
+    options = {'members': None}
+    actual = do_autodoc('module', 'target.private', config=config, options=options)
+    assert '.. py:function:: private_function_after_indented_field(name)' not in actual
+
+
 def test_private_field_and_private_members() -> None:
     config = _AutodocConfig(autoclass_content='class')
     options = {
@@ -76,6 +86,17 @@ def test_private_field_and_private_members() -> None:
         '',
         '   private_function is a docstring().',
         '',
+        '   :meta private:',
+        '',
+        '',
+        '.. py:function:: private_function_after_indented_field(name)',
+        '   :module: target.private',
+        '',
+        '   private_function_after_indented_field is a docstring().',
+        '',
+        '   :raises ValueError:',
+        '       - if the condition is not met',
+        '       - if something else happens',
         '   :meta private:',
         '',
     ]
