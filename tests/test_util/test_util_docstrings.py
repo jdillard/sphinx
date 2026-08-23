@@ -40,6 +40,25 @@ def test_separate_metadata() -> None:
     assert docstring == 'blah blah blah\n:meta baz:\n'
     assert metadata == {'foo': 'bar'}
 
+    # a field whose body contains indented content (e.g. a list) does not
+    # break the field list, so a later field marker is still recognised
+    # (regression test for #11728)
+    text = (
+        ':param int n: Magic number\n'
+        ':raises ValueError:\n'
+        '    - if the moon is full\n'
+        '    - if I feel like it\n'
+        ':meta private:\n'
+    )
+    docstring, metadata = separate_metadata(text)
+    assert docstring == (
+        ':param int n: Magic number\n'
+        ':raises ValueError:\n'
+        '    - if the moon is full\n'
+        '    - if I feel like it\n'
+    )
+    assert metadata == {'private': ''}
+
 
 def test_prepare_docstring() -> None:
     docstring = """multiline docstring

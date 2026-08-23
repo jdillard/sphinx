@@ -5,6 +5,16 @@ def private_function(name):
     """
 
 
+def private_function_after_indented_field(name):
+    """private_function_after_indented_field is a docstring().
+
+    :raises ValueError:
+        - if the condition is not met
+        - if something else happens
+    :meta private:
+    """
+
+
 def _public_function(name):
     """public_function is a docstring().
 

@@ -13,6 +13,11 @@ Bugs fixed
   English stemmer) and Dutch (which uses the Dutch Porter stemmer).
   Patch by Hugo van Kemenade
 
+* #11728: autodoc: Fix ``:meta private:`` (and other ``:meta:`` fields)
+  being ignored when it follows a field whose body contains indented
+  content.
+  Patch by Jared Dillard
+
 
 Release 9.1.0 (released Dec 31, 2025)
 =====================================
