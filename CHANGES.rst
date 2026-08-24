@@ -7,6 +7,8 @@ Bugs fixed
 * #14465: LaTeX: PDF build crash since LaTeX June 2026 release if tables are
   styled with ``'colorrows'`` (which is the default).
   Patch by Jean-François B.
+* #11457: LaTeX: Fix ``numref`` references in additional documents configured
+  via :confval:`latex_documents` that are not reachable from :confval:`root_doc`.
 
 * #14229: Fix JavaScript search for languages whose stemmer class name
   does not match the language name, such as Chinese (which reuses the
