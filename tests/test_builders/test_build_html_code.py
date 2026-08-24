@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pygments
 import pytest
+from docutils import nodes
 
 if TYPE_CHECKING:
     from sphinx.testing.util import SphinxTestApp
@@ -47,6 +48,15 @@ def test_html_code_role(app: SphinxTestApp) -> None:
 
     app.build()
     content = (app.outdir / 'index.html').read_text(encoding='utf8')
+
+    literals = list(app.env.get_doctree('index').findall(nodes.literal))
+    assert [literal.astext() for literal in literals] == [
+        'def foo(1 + 2 + None + "abc"): pass',
+        r'D:\example\path',
+        r'D:\\example\\path',
+        r'r"D:\example\path"',
+        r'r"D:\\example\\path"',
+    ]
 
     common_content = (
         f'<span class="k">def</span>{sp}<span class="nf">foo</span>'
