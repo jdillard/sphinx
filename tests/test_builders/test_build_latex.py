@@ -482,6 +482,20 @@ def test_numref(app: SphinxTestApp) -> None:
     ) in result
 
 
+@pytest.mark.sphinx('latex', testroot='latex-multiple-documents')
+def test_numref_in_additional_latex_document(app: SphinxTestApp) -> None:
+    app.build(force_all=True)
+
+    warnings = app.warning.getvalue()
+    assert 'Any number is not assigned: report-table' not in warnings
+
+    result = (app.outdir / 'report.tex').read_text(encoding='utf8')
+    assert (
+        '\\hyperref[\\detokenize{report:report-table}]'
+        '{Table \\ref{\\detokenize{report:report-table}}}'
+    ) in result
+
+
 @pytest.mark.sphinx(
     'latex',
     testroot='numfig',

@@ -1400,10 +1400,11 @@ class StandardDomain(Domain):
         docname: str,
         target_node: Element,
     ) -> tuple[int, ...] | None:
+        if builder.name == 'latex':
+            return ()
+
         if figtype == 'section':
-            if builder.name == 'latex':
-                return ()
-            elif docname not in env.toc_secnumbers:
+            if docname not in env.toc_secnumbers:
                 raise ValueError  # no number assigned
             else:
                 anchorname = '#' + target_node['ids'][0]
