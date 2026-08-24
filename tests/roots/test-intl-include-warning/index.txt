@@ -1,0 +1,6 @@
+i18n include warning
+====================
+
+This is the main document.
+
+.. include:: included.inc

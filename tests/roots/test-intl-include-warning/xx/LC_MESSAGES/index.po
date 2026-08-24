@@ -1,0 +1,6 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Line of *emphasis* markup."
+msgstr "LINE OF *BROKEN EMPHASIS MARKUP."
