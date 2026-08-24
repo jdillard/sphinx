@@ -126,6 +126,20 @@ def test_text_emit_warnings(app: SphinxTestApp) -> None:
 
 
 @sphinx_intl
+@pytest.mark.sphinx('text', testroot='intl-include-warning')
+def test_text_emit_warnings_for_included_file(app: SphinxTestApp) -> None:
+    app.build()
+    warnings = getwarning(app.warning).replace(os.sep, '/')
+    warning_expr = (
+        '.*/included.inc:3:<translated>:1: '
+        'WARNING: Inline emphasis start-string without end-string. \\[docutils\\]\n'
+    )
+    assert re.search(warning_expr, warnings), (
+        f'{warning_expr!r} did not match {warnings!r}'
+    )
+
+
+@sphinx_intl
 @pytest.mark.sphinx('text', testroot='intl')
 @pytest.mark.test_params(shared_result='test_intl_basic')
 def test_text_warning_node(app: SphinxTestApp) -> None:

@@ -55,6 +55,7 @@ def _publish_msgstr(
     *,
     config: Config,
     env: BuildEnvironment,
+    filetype: str,
     registry: SphinxComponentRegistry,
     settings: _DocutilsSettings,
 ) -> nodes.Element:
@@ -63,14 +64,14 @@ def _publish_msgstr(
     :param str source: source text
     :param str source_path: source path for warning indication
     :param source_line: source line for warning indication
-    :param sphinx.util.docutils._DocutilsSettings settings: docutils settings
     :param sphinx.config.Config config: sphinx config
     :param sphinx.environment.BuildEnvironment env: sphinx environment
+    :param str filetype: source parser filetype
     :param sphinx.registry.SphinxComponentRegistry registry: sphinx registry
+    :param sphinx.util.docutils._DocutilsSettings settings: docutils settings
     :return: document
     :rtype: docutils.nodes.document
     """
-    filetype = get_filetype(config.source_suffix, source_path)
     doc = docutils.utils.new_document(
         f'{source_path}:{source_line}:<translated>', settings
     )
@@ -422,6 +423,7 @@ class Locale(SphinxTransform):
         merged: dict[str, str] = {}
         for catalogue in filter(None, reversed(catalogues)):  # type: dict[str, str]
             merged |= catalogue
+        filetype = get_filetype(self.config.source_suffix, source)
 
         # phase1: replace reference ids with translated names
         for node, msg in extract_messages(self.document):
@@ -458,10 +460,11 @@ class Locale(SphinxTransform):
 
             patch = _publish_msgstr(
                 msgstr,
-                source,
+                node.source or source,
                 node.line,  # type: ignore[arg-type]
                 config=self.config,
                 env=self.env,
+                filetype=filetype,
                 registry=self.env._registry,
                 settings=settings,
             )
@@ -479,10 +482,11 @@ class Locale(SphinxTransform):
                     term, first_classifier = split_term_classifiers(msgstr)
                     patch = _publish_msgstr(
                         term or '',
-                        source,
+                        node.source or source,
                         node.line,  # type: ignore[arg-type]
                         config=self.config,
                         env=self.env,
+                        filetype=filetype,
                         registry=self.env._registry,
                         settings=settings,
                     )
@@ -490,7 +494,7 @@ class Locale(SphinxTransform):
                         self.env,
                         patch,
                         first_classifier,
-                        source,
+                        node.source or source,
                         node.line,  # type: ignore[arg-type]
                         _id,
                         self.document,
@@ -557,10 +561,11 @@ class Locale(SphinxTransform):
 
             patch = _publish_msgstr(
                 msgstr,
-                source,
+                node.source or source,
                 node.line,  # type: ignore[arg-type]
                 config=self.config,
                 env=self.env,
+                filetype=filetype,
                 registry=self.env._registry,
                 settings=settings,
             )
