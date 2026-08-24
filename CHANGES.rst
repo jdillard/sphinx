@@ -4,6 +4,8 @@ Release 9.1.1 (in development)
 Bugs fixed
 ----------
 
+* #11172: Preserve backslashes in the :rst:role:`code` role.
+  Patch by Jared Dillard.
 * #14465: LaTeX: PDF build crash since LaTeX June 2026 release if tables are
   styled with ``'colorrows'`` (which is the default).
   Patch by Jean-François B.

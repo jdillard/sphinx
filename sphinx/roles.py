@@ -594,6 +594,7 @@ def code_role(
     if language and language not in classes:
         classes.append(language)
 
+    text = nodes.unescape(text, restore_backslashes=True)
     node = nodes.literal(rawtext, text, classes=classes, language=language)
 
     return [node], []
