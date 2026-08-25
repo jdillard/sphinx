@@ -21,11 +21,13 @@ from sphinx.builders.html._build_info import BuildInfo
 from sphinx.locale import __
 from sphinx.util import logging
 from sphinx.util._pathlib import _StrPath
+from sphinx.util._uri import is_url
 from sphinx.util.display import status_iterator
 from sphinx.util.fileutil import copy_asset_file
 from sphinx.util.osutil import copyfile, ensuredir, relpath
 
 if TYPE_CHECKING:
+    from collections.abc import Set
     from typing import Any
 
     from docutils.nodes import Element, Node
@@ -172,6 +174,14 @@ class EpubBuilder(StandaloneHTMLBuilder):
         self.id_cache: dict[str, str] = {}
         self.use_index = self.get_builder_config('use_index', 'epub')
         self.refnodes: list[dict[str, Any]] = []
+
+    def prepare_writing(self, docnames: Set[str]) -> None:
+        super().prepare_writing(docnames)
+        # Favicons are browser-specific and are not used by EPUB readers.
+        self.globalcontext['favicon_url'] = ''
+
+    def copy_html_favicon(self) -> None:
+        """Do not copy HTML favicons into EPUB output."""
 
     def create_build_info(self) -> BuildInfo:
         return BuildInfo(self.config, self.tags, frozenset({'html', 'epub'}))
@@ -576,6 +586,13 @@ class EpubBuilder(StandaloneHTMLBuilder):
             self.config.epub_basename + '.epub',
             *self.config.epub_exclude_files,
         ]
+        if (
+            (favicon := self.config.html_favicon)
+            and not is_url(favicon)
+            and Path(favicon).suffix not in self.media_types
+        ):
+            favicon_path = self._static_dir / Path(favicon).name
+            self.ignored_files.append(relpath(favicon_path, self.outdir))
         if not self.use_index:
             self.ignored_files.append('genindex' + self.out_suffix)
         for root, dirs, files in os.walk(self.outdir):
