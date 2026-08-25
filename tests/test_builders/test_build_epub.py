@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
 
 import pytest
 
@@ -192,6 +193,28 @@ def test_build_epub(app: SphinxTestApp) -> None:
     assert (
         tocs[0].find('./xhtml:a').text == 'The basic Sphinx documentation for testing'
     )
+
+
+@pytest.mark.sphinx(
+    'epub',
+    testroot='basic',
+    confoverrides={
+        'html_favicon': '_static/favicon.ico',
+        'html_static_path': ['_static'],
+    },
+)
+def test_html_favicon_is_ignored(app: SphinxTestApp) -> None:
+    app.build(force_all=True)
+
+    favicon = '_static/favicon.ico'
+    assert favicon not in app.warning.getvalue()
+    assert (app.outdir / favicon).exists()
+    assert 'rel="icon"' not in (app.outdir / 'index.xhtml').read_text(encoding='utf8')
+    assert favicon not in (app.outdir / 'content.opf').read_text(encoding='utf8')
+
+    epub = app.outdir / f'{app.config.epub_basename}.epub'
+    with ZipFile(epub) as archive:
+        assert favicon not in archive.namelist()
 
 
 @pytest.mark.sphinx(
