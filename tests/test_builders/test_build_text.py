@@ -264,3 +264,17 @@ def test_secnums(app: SphinxTestApp) -> None:
     doc2 = (app.outdir / 'doc2.txt').read_text(encoding='utf8')
     expect = 'Section B\n*********\n\n\nSub Ba\n======\n\n\nSub Bb\n======\n'
     assert doc2 == expect
+
+
+@pytest.mark.sphinx(
+    'text',
+    testroot='numfig',
+    confoverrides={'numfig': True},
+)
+def test_numref(app: SphinxTestApp) -> None:
+    app.build()
+    content = (app.outdir / 'index.txt').read_text(encoding='utf8')
+    assert 'Fig.1 is Fig. 1' in content
+    assert 'Fig.2.2 is Figure2.2' in content
+    assert 'Fig.1 is Fig.1 should be Fig.1' in content
+    assert 'Section.1 is Sect.1 Foo' in content

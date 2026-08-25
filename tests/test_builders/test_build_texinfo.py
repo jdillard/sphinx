@@ -127,6 +127,20 @@ def test_texinfo_xrefs(app: SphinxTestApp) -> None:
     ) in output
 
 
+@pytest.mark.sphinx(
+    'texinfo',
+    testroot='numfig',
+    confoverrides={'numfig': True},
+)
+def test_numref(app: SphinxTestApp) -> None:
+    app.build()
+    content = (app.outdir / 'projectnamenotset.texi').read_text(encoding='utf8')
+    assert 'Fig.1 is Fig. 1' in content
+    assert 'Fig.2.2 is Figure2.2' in content
+    assert 'Fig.1 is Fig.1 should be Fig.1' in content
+    assert 'Section.1 is Sect.1 Foo' in content
+
+
 @pytest.mark.sphinx('texinfo', testroot='root')
 def test_texinfo_samp_with_variable(app: SphinxTestApp) -> None:
     app.build()

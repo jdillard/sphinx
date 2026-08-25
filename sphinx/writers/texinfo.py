@@ -778,7 +778,7 @@ class TexinfoTranslator(SphinxTranslator):
         pass
 
     def visit_number_reference(self, node: Element) -> None:
-        text = nodes.Text(node.get('title', '#'))
+        text = nodes.Text(node.astext())
         self.visit_Text(text)
         raise nodes.SkipNode
 

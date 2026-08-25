@@ -105,3 +105,17 @@ def test_rubric(app: SphinxTestApp) -> None:
     app.build()
     content = (app.outdir / 'projectnamenotset.1').read_text(encoding='utf8')
     assert 'This is a rubric\n' in content
+
+
+@pytest.mark.sphinx(
+    'man',
+    testroot='numfig',
+    confoverrides={'numfig': True},
+)
+def test_numref(app: SphinxTestApp) -> None:
+    app.build()
+    content = (app.outdir / 'projectnamenotset.1').read_text(encoding='utf8')
+    assert 'Fig.1 is Fig. 1' in content
+    assert 'Fig.2.2 is Figure2.2' in content
+    assert 'Fig.1 is Fig.1 should be Fig.1' in content
+    assert 'Section.1 is Sect.1 Foo' in content
