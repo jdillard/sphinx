@@ -7,9 +7,78 @@
 .. role:: code-py(code)
    :language: Python
 
-This extension features one additional builder, the :class:`CoverageBuilder`.
+This extension measures how much of your Python or C API is included in your
+documentation. It does **not** measure code coverage from tests.
 
-.. todo:: Write this section.
+For Python APIs, the coverage builder imports the configured modules, finds
+public functions, classes, and methods, and compares them with the Python
+objects described in the documentation. An object counts as documented when
+it is described by a Python domain directive, such as :rst:dir:`py:function`,
+or by an :mod:`~sphinx.ext.autodoc` directive. A docstring in the source code
+alone does not count as documentation.
+
+For C APIs, the builder searches configured C source files for API elements
+and compares them with objects described by :doc:`C domain </usage/domains/c>`
+directives.
+
+
+Getting started
+---------------
+
+Add :mod:`sphinx.ext.coverage` to the :confval:`extensions` list in
+:file:`conf.py`. For the most complete Python coverage report, also specify
+the packages or modules to inspect with :confval:`coverage_modules`:
+
+.. code-block:: python
+
+   extensions = [
+       ...
+       'sphinx.ext.coverage',
+   ]
+
+   coverage_modules = ['my_package']
+
+The coverage builder imports the modules it checks, so the package must be
+installed in the build environment or otherwise available on :data:`sys.path`.
+
+Run the coverage builder:
+
+.. code-block:: console
+
+   $ sphinx-build -M coverage docs docs/_build
+
+With this example command, the Python report is written to
+:file:`docs/_build/coverage/python.txt`. It contains coverage statistics and
+lists the functions, classes, and methods that are not described in the
+documentation. For example:
+
+.. code-block:: text
+
+   Undocumented Python objects
+   ===========================
+
+   Statistics
+   ----------
+
+   +--------------------+----------+--------------+
+   | Module             | Coverage | Undocumented |
+   +====================+==========+==============+
+   | my_package.widgets | 50.00%   | 2            |
+   +--------------------+----------+--------------+
+
+   my_package.widgets
+   ------------------
+   Functions:
+    * parse
+
+   Classes:
+    * Widget -- missing methods:
+
+      - render
+
+The C API report is written to :file:`c.txt` in the same directory. C API
+coverage requires additional configuration with :confval:`coverage_c_path`
+and :confval:`coverage_c_regexes`.
 
 .. note::
 
@@ -35,14 +104,19 @@ This extension features one additional builder, the :class:`CoverageBuilder`.
    one of the directories on :data:`sys.path` -- adapt your :data:`sys.path`
    in the configuration file accordingly.
 
-To use this builder, activate the coverage extension in your configuration file
-and run ``sphinx-build -M coverage`` on the command line.
+If :confval:`coverage_modules` is not set, the builder checks only Python
+modules already named in the documentation by an :rst:dir:`py:module` or
+:rst:dir:`automodule` directive. Set :confval:`coverage_modules` to also find
+packages and modules that are missing from the documentation entirely.
 
 
 Builder
 -------
 
 .. py:class:: CoverageBuilder
+
+   Checks API documentation coverage and writes plain-text reports for Python
+   and C API elements.
 
 
 Configuration
