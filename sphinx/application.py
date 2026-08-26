@@ -908,9 +908,24 @@ class Sphinx:
                         * ``'html'`` if a change in the setting needs a full rebuild of HTML
                           documents.
                         * ``''`` if a change in the setting will not need any special rebuild.
-        :param types: The type of configuration value.  A list of types can be specified.  For
-                      example, ``[str]`` is used to describe a configuration that takes string
-                      value.
+        :param types: The permitted type or types for the configuration value.
+                      Pass a concrete runtime type, such as ``str``, or a
+                      collection of types, such as ``(str, pathlib.Path)``.
+                      User-defined classes are supported; they are treated as
+                      types and are not called as validators.
+
+                      After configuration initialization, Sphinx compares the
+                      value's runtime type with the resolved default's type and
+                      the explicitly permitted types. A mismatch emits a warning.
+                      If *types* is omitted, the resolved default's type is used.
+                      If the default is ``None`` and *types* is omitted, type
+                      checking is skipped. ``typing.Any`` also disables type
+                      checking.
+
+                      Except for ``typing.Any``, typing constructs such as
+                      ``typing.Union`` are not supported. An
+                      :class:`sphinx.config.ENUM` may instead be used to restrict
+                      the value to a fixed set of candidates.
         :param description: A short description of the configuration value.
 
         .. versionchanged:: 0.4
