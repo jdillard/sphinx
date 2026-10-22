@@ -212,3 +212,24 @@ def test_include_include_read_event_nested_includes(app):
     assert len(doctree.children) == 3
     assert isinstance(doctree.children[1], nodes.paragraph)
     assert doctree.children[1].rawsource == 'The amazing foo.'
+
+
+@pytest.mark.sphinx('html', testroot='toctree-glob')
+def test_toctree_level_up_option(app):
+    text = '.. toctree::\n   :level-up: 2\n\n   foo\n'
+
+    app.env.find_files(app.config, app.builder)
+    doctree = restructuredtext.parse(app, text, 'index')
+    assert_node(doctree, [nodes.document, nodes.compound, addnodes.toctree])
+    assert_node(extract_node(doctree, 0, 0), addnodes.toctree, level_up=2)
+
+
+@pytest.mark.sphinx('html', testroot='toctree-glob')
+def test_toc_level_up_directive_sets_default(app):
+    text = '.. toc-level-up:: 1\n\n.. toctree::\n\n   foo\n'
+
+    app.env.find_files(app.config, app.builder)
+    doctree = restructuredtext.parse(app, text, 'index')
+    assert_node(doctree, [nodes.document, nodes.compound, addnodes.toctree])
+    assert_node(extract_node(doctree, 0, 0), addnodes.toctree, level_up=1)
+    assert app.env.current_document.toc_level_up == 1

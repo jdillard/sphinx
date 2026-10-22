@@ -497,7 +497,7 @@ def inline_all_toctrees(
     """
     tree = tree.deepcopy()
     for toctreenode in list(tree.findall(addnodes.toctree)):
-        newnodes = []
+        newnodes: list[Element] = []
         includefiles = map(str, toctreenode['includefiles'])
         indent += ' '
         for includefile in includefiles:
@@ -530,8 +530,80 @@ def inline_all_toctrees(
                         if 'docname' not in sectionnode:
                             sectionnode['docname'] = includefile
                     newnodes.append(sof)
-        toctreenode.parent.replace(toctreenode, newnodes)
+        _replace_toctree_with_inlined(toctreenode, newnodes)
     return tree
+
+
+def _containing_section(node: Node) -> nodes.section | None:
+    parent = node.parent
+    while parent is not None:
+        if isinstance(parent, nodes.section):
+            return parent
+        parent = parent.parent
+    return None
+
+
+def _replace_toctree_with_inlined(
+    toctreenode: addnodes.toctree, newnodes: list[Element]
+) -> None:
+    """Replace a toctree with inlined documents, honoring ``:level-up:``.
+
+    Single-file builders insert the included documents after the ancestor
+    section so PDF/section nesting matches the promoted TOC. The original
+    in-page toctree location is not used for HTML (resolved separately).
+    """
+    parent = toctreenode.parent
+    if parent is None:
+        return
+
+    level_up = toctreenode.get('level-up', 0)
+    if not level_up:
+        parent.replace(toctreenode, newnodes)
+        return
+
+    target_section: nodes.section | None = None
+    current: Node = toctreenode
+    for _ in range(level_up):
+        section = _containing_section(current)
+        if section is None or section.parent is None:
+            break
+        target_section = section
+        current = section
+
+    toc_index = parent.index(toctreenode)
+    wrapper_parent = parent.parent
+    wrapper_index = wrapper_parent.index(parent) if wrapper_parent is not None else 0
+    parent.remove(toctreenode)
+    removed_wrapper = False
+    if (
+        isinstance(parent, nodes.compound)
+        and 'toctree-wrapper' in parent.get('classes', ())
+        and len(parent) == 0
+        and wrapper_parent is not None
+    ):
+        wrapper_parent.remove(parent)
+        removed_wrapper = True
+
+    if not newnodes:
+        return
+
+    if target_section is not None and target_section.parent is not None:
+        insert_parent = target_section.parent
+        idx = insert_parent.index(target_section) + 1
+        while idx < len(insert_parent) and isinstance(
+            insert_parent[idx], addnodes.start_of_file
+        ):
+            idx += 1
+        for offset, newnode in enumerate(newnodes):
+            insert_parent.insert(idx + offset, newnode)
+        return
+
+    if removed_wrapper and wrapper_parent is not None:
+        for offset, newnode in enumerate(newnodes):
+            wrapper_parent.insert(wrapper_index + offset, newnode)
+    else:
+        for offset, newnode in enumerate(newnodes):
+            parent.insert(toc_index + offset, newnode)
 
 
 def _make_id(string: str) -> str:
